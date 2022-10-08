@@ -136,3 +136,10 @@ dmypy.json
 
 # Data
 *.db
+
+# Image files
+*.png
+*.PNG
+
+# mac
+.DS_Store
