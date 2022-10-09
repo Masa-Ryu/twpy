@@ -1,0 +1,310 @@
+from os import PRIO_USER
+from rate_limit import read_table
+import sqlite3
+
+import rich
+
+from twrraper import TWrapper
+import tweets
+import users
+
+from pprint import pprint
+
+
+class TwFunctions(TWrapper):
+    # Todo: ツイ消し記録
+    # Todo: ソーシャルドッグを参考にする
+    def __init__(self):
+        super().__init__()
+
+    def _arrange_user_data(self, data):
+        result = {
+            'id': int(data['id']),
+            'username': str(data['username']),
+            'name': str(data['name'].replace('"', '-')),
+            'created_at': str(data['created_at']),
+            'description': str(data.get('description').replace('\n', '').replace('"', '-')),
+            'tweet_count': int(data['public_metrics']['tweet_count']),
+            'following': int(data['public_metrics']['following_count']),
+            'followers': int(data['public_metrics']['followers_count']),
+            'listed': int(data['public_metrics']['listed_count']),
+            'protected': str(data['protected']),
+            'verified': str(data['verified'])
+        }
+        if data.get('entities') is not None:
+            if data.get('entities').get('url') is not None:
+                result['url'] = str(
+                    data.get('entities').get('url').get('urls')[0][
+                        'expanded_url'])
+            else:
+                result['url'] = 'None'
+        else:
+            result['url'] = 'None'
+        if data.get('location') is not None:
+            result['location'] = str(data.get('location'))
+        else:
+            result['location'] = 'None'
+        if data.get('latest_tweet_day') is not None:
+            result['latest_tweet_day'] = str(data.get('latest_tweet_day'))
+        else:
+            result['latest_tweet_day'] = 'None'
+        return result
+
+    def _arrange_db_user_data(self, data):
+        result = {
+            'id': int(data[0]),
+            'username': str(data[1]),
+            'name': str(data[2].replace('"', '-')),
+            'created_at': str(data[3]),
+            'description': str(data[4].replace('\n', '').replace('"', '-')),
+            'tweet_count': int(data[5]),
+            'following': int(data[6]),
+            'followers': int(data[7]),
+            'listed': int(data[8]),
+            'protected': str(data[9]),
+            'verified': str(data[10]),
+        }
+        if not data[11] == 'None':
+            result['url'] = str(data[11])
+        else:
+            result['url'] = 'None'
+        if not data[12] == 'None':
+            result['location'] = str(data[12])
+        else:
+            result['location'] = 'None'
+        if not data[13] == 'None':
+            result['latest_tweet_day'] = str(data[13])
+        else:
+            result['latest_tweet_day'] = 'None'
+        return result
+
+    def user_infomation(self, who='me'):
+        if who == 'me':
+            result = self.verify_credentials()
+            id_ = result['id']
+        else:
+            id_ = who
+        result = self.user_by_id(id_)
+        result = self._arrange_user_data(result['data'])
+        return result
+
+    def my_users(self, db_mode=True, side='following'):
+        # Todo: 表示名とID
+        res = []
+        if db_mode:  # Todo: From database
+            read_data = users.read_table(side)
+            for _ in read_data:
+                data = self._arrange_db_user_data(_)
+                res.append(data)
+            return res
+        else:  # Todo: From API
+            data = self.user_infomation()
+            if side == 'following':
+                results = self.following(data['id'])['data']
+            else:
+                results = self.followers(data['id'])['data']
+            for result in results:
+                res.append(self._arrange_user_data(result))
+            return res
+
+    def write_my_users(self, side='following'):
+        #  Todo: write to database
+        """
+        DBからIDを取得。APIからIDを取得
+        APIIDがDBIDにあるか一つずつ確認する。
+        id があってDBのステータスとAPIが違えば、更新＆通知
+        APIidにあってDBidになければnew record。
+        DBidにあってAPIidになければ削除
+        """
+
+        # New record
+        from_db = []
+        db_data = users.execute_order(side, f'SELECT id FROM {side}')
+        for _ in db_data:
+            from_db.append(_[0])
+        from_db = set(from_db)
+
+        from_api = []
+        api_data = self.my_users(False, side)
+        for _ in api_data:
+            from_api.append(_['id'])
+        from_api = set(from_api)
+
+        new_members = from_api - from_db
+        remove_members = from_db - from_api
+        if not new_members == set():
+            for _ in api_data:
+                for new_member in new_members:
+                    if _['id'] == new_member:
+                        print(f'DBに{_["username"]}({_["name"]})を追加しました。')
+                        users.new_record(
+                            side, _['id'], _['username'], _['name'],
+                            _['created_at'], _['description'], _['tweet_count'],
+                            _['following'], _['followers'], _['listed'],
+                            _['protected'], _['verified'], _['url'],
+                            _['location'], 'None'
+                        )
+                        break
+
+        # Delete record
+        if not remove_members == set():
+            for remove_member in remove_members:
+                data = users.execute_order(
+                    side,
+                    f'SELECT * FROM {side} WHERE id="{remove_member}"'
+                )
+                for _ in data:
+                    data = self._arrange_db_user_data(_)
+                print(f'DBから{data["username"]}({data["name"]})を削除しました。')
+                users.delete_record(side, remove_member)
+
+        # Update record
+        def notify_changed(username, name, column_name):
+            print(
+                f'{username}({name})の{column_name}が{data[column_name]}から{api[column_name]}に変更されました。'
+            )
+
+        update_members = from_db - new_members
+        for update_member in update_members:
+            data = users.execute_order(side,
+                                       f'SELECT * FROM {side} WHERE id="{update_member}"')
+            for _ in data:
+                data = self._arrange_db_user_data(_)
+            for api in api_data:
+                if api['id'] == data['id']:
+                    if not api['username'] == data['username']:
+                        notify_changed(data['username'], data['name'],
+                                       'username')
+                        users.update_record(side, api['id'], 'username',
+                                            api['username'])
+                    if not api['name'] == data['name']:
+                        try:
+                            notify_changed(data['username'], data['name'], 'name')
+                            users.update_record(side, api['id'], 'name',
+                                                api['name'])
+                        except sqlite3.OperationalError:
+                            print('Name failed update')
+                    if not api['description'] == data['description']:
+                        try:
+                            users.update_record(side, api['id'], 'description',
+                                            api['description'])
+                            notify_changed(data['username'], data['name'],
+                                           'description')
+                        except sqlite3.OperationalError:
+                            print('Description failed update')
+                    if not api['tweet_count'] == data['tweet_count']:
+                        notify_changed(data['username'], data['name'],
+                                       'tweet_count')
+                        users.update_record(side, api['id'], 'tweet_count',
+                                            api['tweet_count'])
+                    if not api['following'] == data['following']:
+                        notify_changed(data['username'], data['name'],
+                                       'following')
+                        users.update_record(side, api['id'], 'following',
+                                            api['following'])
+                    if not api['followers'] == data['followers']:
+                        notify_changed(data['username'], data['name'],
+                                       'followers')
+                        users.update_record(side, api['id'], 'followers',
+                                            api['followers'])
+                    if not api['listed'] == data['listed']:
+                        notify_changed(data['username'], data['name'], 'listed')
+                        users.update_record(side, api['id'], 'listed',
+                                            api['listed'])
+                    if not api['protected'] == data['protected']:
+                        notify_changed(data['username'], data['name'],
+                                       'protected')
+                        users.update_record(side, api['id'], 'protected',
+                                            api['protected'])
+                    if not api['verified'] == data['verified']:
+                        notify_changed(data['username'], data['name'],
+                                       'verified')
+                        users.update_record(side, api['id'], 'verified',
+                                            api['verified'])
+                    if not api['url'] == data['url']:
+                        try:
+                            notify_changed(data['username'], data['name'], 'url')
+                            users.update_record(side, api['id'], 'url',
+                                                api['url'])
+                        except sqlite3.OperationalError:
+                            print('URL failed update')
+                    if not api['location'] == data['location']:
+                        try:
+                            notify_changed(data['username'], data['name'],
+                                        'location')
+                            users.update_record(side, api['id'], 'location',
+                                                api['location'])
+                        except sqlite3.OperationalError:
+                            print('Location failed update')
+                    break
+
+    def my_listed(self):
+        # Todo: 表示名とID
+        pass
+
+    def update_text_image(self, msg, media):
+        result = self.media(media)
+        media_ids = result.json()['media_id']
+        result = self.update(msg, media_ids)
+        return result
+
+    def write_following_tweets(self, id_):
+        """
+        followingのツイートを保存
+        """
+        res = self.user_tweet_timeline_by_id(id_)
+        data = res['data']
+        media_infomation = res.get('includes')
+        for d in reversed(data):
+            # read database
+            order = f'SELECT id from "{id_}"'
+            read_tweets = tweets.execute_order(id_, order)
+            for read_tweet in read_tweets:
+                if d['id'] == str(read_tweet[0]):
+                    break
+            else:
+                # new record
+                try:
+                    tweets.new_record(
+                        id_,
+                        d['id'],
+                        d['text'],
+                        d['created_at'],
+                        d['lang'],
+                        'None',
+                        'None',
+                        'None',
+                        'None'
+                        )
+                except sqlite3.OperationalError:
+                    print('Tweet failed recording')
+
+                media_url = []
+                media_ids_tweet = d.get('attachments')
+                if media_infomation is not None:
+                    if media_ids_tweet is not None:
+                        for m in media_infomation['media']:
+                            media_key = m['media_key']
+                            for media_id_tweet in media_ids_tweet['media_keys']:
+                                if media_key == media_id_tweet:
+                                    if media_key[0] == '3':
+                                        media_url.append(m['url'])
+                                    elif media_key[:2] == '16' or media_key[:2] == 13:
+                                        media_url.append(m['preview_image_url'])
+                                    for url_num in range(len(media_url)):
+                                        tweets.update_record(id_, d['id'], f'media_url{url_num}', media_url[url_num])
+
+    def following_tweet_record(self):
+        for _ in self.my_users():
+            self.write_following_tweets(_['id'])
+
+    def review_followers(self):
+        pass
+
+
+
+if __name__ == '__main__':
+    t = TwFunctions()
+    resp = t.write_my_users('following')
+    resp = t.write_my_users('followers')
+    t.following_tweet_record()
