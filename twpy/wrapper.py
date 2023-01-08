@@ -1,6 +1,6 @@
 from requests import request
 
-from twpy.authentication import Authentication
+from twpy.twpy.authentication import Authentication
 
 
 class Wrapper:
