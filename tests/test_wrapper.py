@@ -8,7 +8,7 @@ if __name__ == '__main__':
     # resp = wrapper.rate_limit_status()
     # resp = wrapper.update(f'Web3イベントは可愛い子が多いので敷居が高くなっていると思います。活動頑張ってください！')
     # resp = wrapper.destroy(resp['id'])
-    # resp = wrapper.media(open('nikeeta_note.jpg', 'rb'))
+    # resp = wrapper.media(open('hoge.jpg', 'rb'))
     # resp = wrapper.verify_credentials()
     # resp = wrapper.tweet_lookup()
     # resp = wrapper.user_tweet_timeline_by_id('1142625173524238336')
