@@ -140,6 +140,10 @@ dmypy.json
 # Image files
 *.png
 *.PNG
+*.JPEG
+*.JPG
+*.jpeg
+*.jpg
 
 # mac
 .DS_Store

@@ -1,4 +1,4 @@
-import twpy.authentication
+from twpy import authentication
 
 from rich import print
 
@@ -19,6 +19,6 @@ def post_tweet():
 
 
 if __name__ == '__main__':
-    authentication = twpy.authentication.Authentication()
-    resp1, resp2 = authentication.set_api()
+    authentication_ = authentication.Authentication()
+    resp1, resp2 = authentication_.set_api()
     post_tweet()
