@@ -30,4 +30,4 @@ class Authentication:
             # bearer_token = api_information['APIV2']['bearer_token']  # Todo: no need?
             # self._HEADERS = {'Authorization': f'Bearer {bearer_token}'}   #todo: no need?
         else:
-            raise FileNotFoundError('Api file not found')
+            raise FileNotFoundError('Api file not found. Prepare "apis.json". ')
