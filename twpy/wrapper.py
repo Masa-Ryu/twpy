@@ -17,44 +17,8 @@ class Wrapper:
         self._path = ''
         self._V1_URL = 'https://api.twitter.com/1.1/'
         self._V2_URL = 'https://api.twitter.com/2/'
-        self._api_num = 0
-        self._table_name = f'API{self._api_num}'
-
-    # def _write_rate_limit(self, table_name, path, limit, remaining, reset):
-    #     data = rate_limit.read_table(table_name)
-    #     for d in data:
-    #         if path in d:
-    #             if time() - float(d[3]) > 0:
-    #                 rate_limit.update_record(table_name, path, remaining, reset)
-    #                 break
-    #             else:
-    #                 remaining = int(d[2]) - 1
-    #                 reset = d[3]
-    #                 rate_limit.update_record(table_name, path, remaining, reset)
-    #                 break
-    #     else:
-    #         rate_limit.new_record(table_name, path, limit, remaining, reset)
-    #     self._reset = 0
-    #     self._remaining = 0
-    #     self._limit = 0
-    #     self._path = ''
-    #
-    # def _check_rate_limit(self, table_name, path):
-    #     data = rate_limit.read_table(table_name)
-    #     for d in data:
-    #         if path in d:
-    #             if d[2] <= 0:
-    #                 if time() - float(d[3]) > 0:
-    #                     return True
-    #                 else:
-    #                     return False
-    #             else:
-    #                 return True
-    #     else:
-    #         return True
 
     def _request(self, version, method, path, payload=None):
-        # if self._check_rate_limit(self._table_name, self._path):
         if payload is None:
             payload = {}
         if version == 0:  # Todo: for media
@@ -90,41 +54,12 @@ class Wrapper:
         else:
             raise TypeError('Version error! Choose 0 or 1 or 2')
 
-        # if res.headers.get('x-rate-limit-limit') is None:
-        #     self._limit = 300
-        # else:
-        #     self._limit = res.headers['x-rate-limit-limit']
-        # if res.headers.get('x-rate-limit-remaining') is None:
-        #     self._remaining = 299
-        # else:
-        #     self._remaining = res.headers['x-rate-limit-remaining']
-        # if res.headers.get('x-rate-limit-reset') is None:
-        #     self._reset = int(time()) + 10800
-        # else:
-        #     self._reset = res.headers['x-rate-limit-reset']
-        # self._write_rate_limit(
-        #         self._table_name, self._path, self._limit, self._remaining,
-        #         self._reset
-        #         )
         if res.status_code == 200:
             return res.json()
         else:
             raise ConnectionError(
                     f'Status code:{res.status_code}, Error message:{res.json()}'
                     )
-        # else:
-        #     if version == 2:
-        #         print('Rate limit exceed!')
-        #         # Todo: キューに入れるとか
-        #     else:
-        #         if self._api_num == 6:
-        #             self._api_num = 0
-        #         else:
-        #             self._api_num += 1
-        #         self._table_name = f'API{self._api_num}'
-        #         print(f'Change API. Next API name is {self._table_name}')
-        #         self._set_api(self._table_name)
-        #         await self._request(version, method, path, payload)
 
     def rate_limit_status(self):
         version = 1
@@ -480,23 +415,23 @@ class Wrapper:
         result = self._request(version, 'GET', path, payload)
         return result
 
-    # def follow(self, id_, target_user_id):
-    #     version = 1
-    #     path = f'{self._V2_URL}users/{id_}/following'
-    #     self._path = 'follow'
-    #     payload = {
-    #         'target_user_id': target_user_id
-    #     }
-    #     result = self._request(version, 'POST', path, payload)
-    #     return result
-    #
-    # def unfollow(self, source_user_id, target_user_id):
-    #     version = 1
-    #     path = f'{self._V2_URL}users/{source_user_id}/following/{target_user_id}'
-    #     self._path = 'unfollow'
-    #     result = self._request(version, 'DELETE', path)
-    #     return result
-    #
+    def follow_v2(self, id_, target_user_id):
+        version = 2
+        path = f'users/{id_}/following'
+        self._path = 'follow'
+        payload = {
+                'target_user_id': target_user_id
+                }
+        result = self._request(version, 'POST', path, payload)
+        return result
+
+    def unfollow_v2(self, source_user_id, target_user_id):
+        version = 2
+        path = f'users/{source_user_id}/following/{target_user_id}'
+        self._path = 'unfollow'
+        result = self._request(version, 'DELETE', path)
+        return result
+
     def block(self, id_, target_user_id):
         version = 2
         path = f'users/{id_}/blocking'
@@ -507,36 +442,36 @@ class Wrapper:
         result = self._request(version, 'POST', path, payload)
         return result
 
-    # def blocks_lookup(self, id_):
-    #     version = 1
-    #     path = f'{self._V2_URL}users/{id_}/blocking'
-    #     self._path = 'block_lookup'
-    #     result = self._request(version, 'GET', path)
-    #     return result
-    #
-    # def unblock(self, source_user_id, target_user_id):
-    #     version = 1
-    #     path = f'{self._V2_URL}users/{source_user_id}/blocking/{target_user_id}'
-    #     self._path = 'unblock'
-    #     result = self._request(version, 'DELETE', path)
-    #     return result
-    #
-    # def like(self, id_, tweet_id):
-    #     version = 1
-    #     path = f'{self._V2_URL}users/{id_}/likes'
-    #     self._path = 'like'
-    #     payload = {
-    #         'tweet_id': tweet_id
-    #     }
-    #     result = self._request(version, 'POST', path, payload)
-    #     return result
-    #
-    # def liked_tweets(self, id_):
-    #     version = 2
-    #     path = f'users/{id_}/liked_tweets'
-    #     self._path = 'like_tweets'
-    #     result = self._request(version, 'GET', path)
-    #     return result
+    def blocks_lookup(self, id_):
+        version = 2
+        path = f'users/{id_}/blocking'
+        self._path = 'block_lookup'
+        result = self._request(version, 'GET', path)
+        return result
+
+    def unblock(self, source_user_id, target_user_id):
+        version = 2
+        path = f'users/{source_user_id}/blocking/{target_user_id}'
+        self._path = 'unblock'
+        result = self._request(version, 'DELETE', path)
+        return result
+
+    def like(self, id_, tweet_id):
+        version = 2
+        path = f'users/{id_}/likes'
+        self._path = 'like'
+        payload = {
+            'tweet_id': tweet_id
+        }
+        result = self._request(version, 'POST', path, payload)
+        return result
+
+    def liked_tweets(self, id_):
+        version = 2
+        path = f'users/{id_}/liked_tweets'
+        self._path = 'like_tweets'
+        result = self._request(version, 'GET', path)
+        return result
 
     def liking_users(self, id_):
         version = 2
@@ -545,15 +480,15 @@ class Wrapper:
         result = self._request(version, 'GET', path)
         return result
 
-    # def unlike(self, id_, tweet_id):
-    #     version = 1
-    #     path = f'users/{id_}/likes/{tweet_id}'
-    #     self._path = 'unlike'
-    #     payload = {
-    #         'tweet_id': tweet_id
-    #     }
-    #     result = self._request(version, 'DELETE', path, payload)
-    #     return result
+    def unlike(self, id_, tweet_id):
+        version = 1
+        path = f'users/{id_}/likes/{tweet_id}'
+        self._path = 'unlike'
+        payload = {
+            'tweet_id': tweet_id
+        }
+        result = self._request(version, 'DELETE', path, payload)
+        return result
 
     def user_tweet_timeline_by_id(self, id_):
         version = 2
