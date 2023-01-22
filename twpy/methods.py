@@ -23,10 +23,12 @@ class Methods(Wrapper):
     def delete_all_tweets(self):
         my_information = self.verify_credentials()
         my_id = my_information['id_str']
-
         next_token = None
         while True:
             tweets = self.user_tweet_timeline_by_id(my_id, next_token)
+            if tweets.get('meta', {}).get('result_count') == 0:
+                break
+
             for tweet in tweets['data']:
                 if 'RT @' in tweet['text']:
                     self.unretweet(tweet_id=tweet['id'])
@@ -75,4 +77,4 @@ class Methods(Wrapper):
                         ).astimezone(tz=jst)
                     print(dt.isoformat())
                     print(f"Limit: {rate_limits[rate_limit][_]['limit']}")
-                    print(f"Limit: {rate_limits[rate_limit][_]['remaining']}")
+                    print(f"Remaining: {rate_limits[rate_limit][_]['remaining']}")
