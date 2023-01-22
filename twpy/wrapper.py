@@ -4,12 +4,14 @@ from twpy.authentication import Authentication
 
 
 class Wrapper:
-    def __init__(self, file_name=None):
-        if file_name is None:
-            authentication = Authentication()
+    def __init__(self, file_name=None, api_info=None, guest=False):
+        authentication = Authentication()
+        if file_name is None and api_info is None:
+            self._API, self._HEADERS = authentication.from_file_authentication('apis.json')
+        elif file_name:
+            self._API, self._HEADERS = authentication.from_file_authentication(file_name)
         else:
-            authentication = Authentication(file_name)
-        self._API, self._HEADERS = authentication.set_api()
+            self._API, self._HEADERS = authentication.from_non_file_authentication(guest, **api_info)
 
         self._V1_URL = 'https://api.twitter.com/1.1/'
         self._V2_URL = 'https://api.twitter.com/2/'
@@ -17,7 +19,7 @@ class Wrapper:
     def _request(self, version, method, path, payload=None):
         if payload is None:
             payload = {}
-        if version == 0:  # Todo: for media
+        if version == 0:  # for media
             res = self._API.post(url=path, files=payload)
         elif version == 1:
             url = self._V1_URL + path

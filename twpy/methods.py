@@ -6,8 +6,8 @@ from twpy.wrapper import Wrapper
 
 
 class Methods(Wrapper):
-    def __init__(self, file_name=None):
-        super().__init__(file_name)
+    def __init__(self, file_name=None, api_info=None, guest=False):
+        super().__init__(file_name, api_info, guest)
 
     def delete_all_likes(self):
         favorites = self.favorites_list()
