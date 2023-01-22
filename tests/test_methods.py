@@ -9,4 +9,4 @@ if __name__ == '__main__':
     # functions.delete_all_likes()
     # functions.unfollow_all()
     # functions.delete_all_tweets()
-    # functions.print_rate_limit()
+    functions.print_rate_limit()

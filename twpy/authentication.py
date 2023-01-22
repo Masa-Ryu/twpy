@@ -5,15 +5,9 @@ from requests_oauthlib import OAuth1Session
 
 
 class Authentication:
-    def __init__(self, file_name=None):
-        if file_name is None:
-            self.file_name = 'apis.json'
-        else:
-            self.file_name = file_name
-
-    def set_api(self):
-        if isfile(f'./{self.file_name}'):
-            with open(f'./{self.file_name}', 'r') as file_name:
+    def from_file_authentication(self, file_name):
+        if isfile(f'./{file_name}'):
+            with open(f'./{file_name}', 'r') as file_name:
                 api_information = json.load(file_name)
                 api_key = api_information['api_key']
                 api_key_secret = api_information['api_key_secret']
@@ -31,3 +25,25 @@ class Authentication:
             # self._HEADERS = {'Authorization': f'Bearer {bearer_token}'}   #todo: no need?
         else:
             raise FileNotFoundError('Api file not found. Prepare "apis.json". ')
+
+    def from_non_file_authentication(self, guest, **kwargs):
+        api_key = kwargs['api_key']
+        api_key_secret = kwargs['api_key_secret']
+        access_token = kwargs['access_token']
+        access_token_secret = kwargs['access_token_secret']
+        if guest:
+            return OAuth1Session(
+                    api_key,
+                    api_key_secret,
+                    access_token,
+                    access_token_secret,
+                    ), None
+        else:
+            bearer_token = kwargs['bearer_token'],
+            return OAuth1Session(
+                    api_key,
+                    api_key_secret,
+                    access_token,
+                    access_token_secret,
+                    bearer_token,
+                    ), {'Authorization': f'Bearer {bearer_token}'}
