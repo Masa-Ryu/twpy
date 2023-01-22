@@ -1,4 +1,5 @@
 from datetime import datetime, timezone, timedelta
+from time import sleep
 
 from rich import print
 
@@ -14,11 +15,13 @@ class Methods(Wrapper):
         if not favorites == []:
             for favorite in favorites:
                 self.destroy_favorite(favorite.get('id_str'))
+                sleep(0.1)
 
     def unfollow_all(self):
         following_list = self.following_ids()
         for following_id in following_list['ids']:
             self.unfollow(user_id=following_id)
+            sleep(0.1)
 
     def delete_all_tweets(self):
         my_information = self.verify_credentials()
@@ -34,9 +37,11 @@ class Methods(Wrapper):
                     self.unretweet(tweet_id=tweet['id'])
                 else:
                     self.delete_tweet(tweet_id=tweet['id'])
+                sleep(0.1)
 
             if tweets.get('meta', {}).get('next_token') is not None:
                 next_token = tweets['meta'].get('next_token')
+                sleep(0.1)
             else:
                 break
 
@@ -64,6 +69,7 @@ class Methods(Wrapper):
     def print_rate_limit(self):
         rate_limits = self.rate_limit_status()
         rate_limits = rate_limits['resources']
+        rate_limits_list = []
         for rate_limit in rate_limits:
             for _ in rate_limits[rate_limit]:
                 if not rate_limits[rate_limit][_]['limit'] == rate_limits[rate_limit][_]['remaining']:
@@ -78,3 +84,13 @@ class Methods(Wrapper):
                     print(dt.isoformat())
                     print(f"Limit: {rate_limits[rate_limit][_]['limit']}")
                     print(f"Remaining: {rate_limits[rate_limit][_]['remaining']}")
+                    rate_limits_dict = {
+                            'Function name': rate_limit,
+                            'Function directory': _,
+                            'Reset time unix': rate_limits[rate_limit][_]['reset'],
+                            'Reset time TZ Tokyo': dt.isoformat(),
+                            'Rate limit': rate_limits[rate_limit][_]['limit'],
+                            'Rate remaining': rate_limits[rate_limit][_]['remaining']
+                            }
+                    rate_limits_list.append(rate_limits_dict)
+        return rate_limits_list
