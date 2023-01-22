@@ -26,24 +26,16 @@ class Authentication:
         else:
             raise FileNotFoundError('Api file not found. Prepare "apis.json". ')
 
-    def from_non_file_authentication(self, guest, **kwargs):
+    def from_non_file_authentication(self, **kwargs):
         api_key = kwargs['api_key']
         api_key_secret = kwargs['api_key_secret']
         access_token = kwargs['access_token']
         access_token_secret = kwargs['access_token_secret']
-        if guest:
-            return OAuth1Session(
-                    api_key,
-                    api_key_secret,
-                    access_token,
-                    access_token_secret,
-                    ), None
-        else:
-            bearer_token = kwargs['bearer_token'],
-            return OAuth1Session(
-                    api_key,
-                    api_key_secret,
-                    access_token,
-                    access_token_secret,
-                    bearer_token,
-                    ), {'Authorization': f'Bearer {bearer_token}'}
+        bearer_token = kwargs['bearer_token']
+        return OAuth1Session(
+                api_key,
+                api_key_secret,
+                access_token,
+                access_token_secret,
+                bearer_token,
+                ), {'Authorization': f'Bearer {bearer_token}'}
